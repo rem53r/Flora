@@ -1,5 +1,5 @@
 package uwu.evaware.flora
 
-fun interface Subscription {
-    fun unsubscribe()
+class Subscription(private val onUnsub: () -> Unit) {
+    fun unsubscribe() = onUnsub()
 }
