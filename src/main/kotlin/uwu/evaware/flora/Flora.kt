@@ -1,22 +1,24 @@
 package uwu.evaware.flora
 
+import java.util.concurrent.ConcurrentSkipListSet
+
 class Flora<T : Any> {
-    private val listeners = sortedSetOf<Listener<T>>()
+    private val listeners = ConcurrentSkipListSet<Listener<T>>()
 
     fun subscribe(priority: Int = 0, handler: (T) -> Unit): Subscription {
         val listener = Listener(priority, handler)
-        synchronized(listeners) { listeners.add(listener) }
+        listeners.add(listener)
         return Subscription { unsubscribe(listener) }
     }
 
     fun unsubscribe(listener: Listener<T>) {
-        synchronized(listeners) { listeners.remove(listener) }
+        listeners.remove(listener)
     }
 
     fun post(event: T) {
-        val snapshot = synchronized(listeners) { listeners.toList() }
-        for (listener in snapshot.reversed()) {
+        for (listener in listeners) {
             listener.handler(event)
         }
     }
 }
+
