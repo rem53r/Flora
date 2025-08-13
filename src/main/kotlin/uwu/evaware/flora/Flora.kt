@@ -1,21 +1,35 @@
 package uwu.evaware.flora
 
+import uwu.evaware.flora.api.Cacheable
+import uwu.evaware.flora.api.Notifiable
+import uwu.evaware.flora.api.Subscribable
 import java.util.concurrent.ConcurrentSkipListSet
 
-abstract class Flora<T> {
-    private val listeners = ConcurrentSkipListSet<Listener<T>>()
+abstract class Flora<T> : Cacheable<List<Listener<T>>>, Subscribable<Listener<T>, T>, Notifiable<T> {
+    val listeners = ConcurrentSkipListSet<Listener<T>>()
+    @Volatile override var cache: List<Listener<T>> = emptyList()
 
-    fun subscribe(priority: Int = 0, handler: (T) -> Unit): Subscription {
-        val listener = Listener(priority, handler)
-        listeners.add(listener)
+    override fun refresh() {
+        cache = listeners.toList()
+    }
+
+    override fun subscribe(listener: Listener<T>): Subscription {
+        if (listeners.add(listener)) refresh()
         return Subscription { unsubscribe(listener) }
     }
 
-    fun unsubscribe(listener: Listener<T>) {
-        listeners.remove(listener)
+    override fun subscribe(priority: Int, handler: (T) -> Boolean): Subscription {
+        return subscribe(Listener(priority, handler))
     }
 
-    fun notify(event: T) {
-        listeners.forEach { it.handler(event) }
+    override fun unsubscribe(listener: Listener<T>) {
+        if (listeners.remove(listener)) refresh()
+    }
+
+    override suspend fun notify(event: T): Boolean {
+        for (listener in cache) {
+            if (!listener.handler(event)) return false
+        }
+        return true
     }
 }

@@ -1,37 +1,59 @@
 import uwu.evaware.flora.Flora
+import uwu.evaware.flora.Listener
+import kotlin.system.measureNanoTime
 
-object Govno : Flora<Dummy>()
+class GovnoData
+object Govno : Flora<GovnoData>()
 
-fun main() {
-    var count = 1
-    var time = 0
-    val repeat = 10
+val listenersList = mutableListOf<Listener<GovnoData>>()
+
+suspend fun main() {
     val events = 1_000_000
+    val listeners = 200
+    val runs = 15
 
-    repeat(1_000) { benchmark(count, false, 1_000) }
+    var totalTimeMs = 0L
+    var totalNsPerOp = 0L
 
-    repeat(repeat) {
-        time += benchmark(count, true, events)
-        count++
+    repeat(runs) { runIndex ->
+        val (durationMs, nsPerOp) = benchmark(events, listeners)
+        println("Run ${runIndex + 1}: completed $events events & $listeners listeners in $durationMs ms, (ns/op): $nsPerOp")
+        totalTimeMs += durationMs
+        totalNsPerOp += nsPerOp
     }
 
-    println("completed ${events * repeat}($events x $repeat) in $time ms")
+    val avgTimeMs = totalTimeMs.toDouble() / runs
+    val avgNsPerOp = totalNsPerOp.toDouble() / runs
+
+    println("Average over $runs runs: $avgTimeMs ms total, $avgNsPerOp ns/op")
 }
 
-fun benchmark(count: Int, print: Boolean = false, events: Int = 100_000): Int {
-    val start = System.currentTimeMillis()
-    repeat(events) {
-        Govno.subscribe {
+suspend fun benchmark(events: Int = 1_000_000, listeners: Int = 200): Pair<Long, Long> {
+    var countLar = 0L
+    listenersList.clear()
+
+    repeat(listeners) {
+        val listener = Listener<GovnoData>(0) {
+            countLar++
+            true
         }
-
-        Govno.notify(Dummy())
+        Govno.subscribe(listener)
+        listenersList.add(listener)
     }
-    val end = System.currentTimeMillis()
-    val result = (end - start).toInt()
 
-    if (print) println("$count -> ${result}ms")
+    val elapsedNs = measureNanoTime {
+        repeat(events) {
+            Govno.notify(GovnoData())
+        }
+    }
 
-    return result
+    listenersList.forEach { Govno.unsubscribe(it) }
+    listenersList.clear()
+
+    val totalCalls = events.toLong() * listeners
+    val nsPerOp = elapsedNs / totalCalls
+
+    println("Subscribed listeners: ${Govno.listeners.count()}")
+
+    return Pair(elapsedNs / 1_000_000, nsPerOp)
 }
-
-class Dummy
