@@ -6,7 +6,7 @@ import uwu.evaware.flora.api.Subscribable
 import java.util.concurrent.ConcurrentSkipListSet
 
 abstract class Flora<T> : Cacheable<List<Listener<T>>>, Subscribable<Listener<T>, T>, Notifiable<T> {
-    val listeners = ConcurrentSkipListSet<Listener<T>>()
+    private val listeners = ConcurrentSkipListSet<Listener<T>>()
     @Volatile override var cache: List<Listener<T>> = emptyList()
 
     override fun refresh() {

@@ -9,7 +9,7 @@ val listenersList = mutableListOf<Listener<GovnoData>>()
 
 suspend fun main() {
     val events = 1_000_000
-    val listeners = 200
+    val listeners = 100
     val runs = 15
 
     var totalTimeMs = 0L
@@ -52,8 +52,6 @@ suspend fun benchmark(events: Int = 1_000_000, listeners: Int = 200): Pair<Long,
 
     val totalCalls = events.toLong() * listeners
     val nsPerOp = elapsedNs / totalCalls
-
-    println("Subscribed listeners: ${Govno.listeners.count()}")
 
     return Pair(elapsedNs / 1_000_000, nsPerOp)
 }
